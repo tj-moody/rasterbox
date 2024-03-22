@@ -18,7 +18,7 @@ int main() {
     float t = 0;
 
     while (window.isOpen()) {
-        window.effectPass(&rb::effects::color_demo);
+        window.effectPass(&rb::effects::colorDemo);
         window.triangle(glm::vec2((int) t % WIDTH, 200),
                         glm::vec2(200, (500 + (int) t) % HEIGHT),
                         glm::vec2(200, 200),
