@@ -10,22 +10,27 @@
 
 rb::Window::Window(unsigned int width,
                    unsigned int height,
-                   const char* window_title)
-    : window(sf::RenderWindow(sf::VideoMode(width, height), window_title)),
-      width(width),
+                   std::string&& window_title)
+    : width(width),
       height(height),
+      window(sf::RenderWindow(sf::VideoMode(width, height), window_title)),
+      window_title(window_title),
       // each pixel takes 4 Uint8's (RGBA)
       pixels(new sf::Uint8[width * height * 4]) {}
 
+sf::Texture texture;
+sf::Sprite sprite;
 void rb::Window::draw() {
+    this->window.setTitle(this->window_title
+                          + " - FPS: " + this->getFrameRate());
+
     // PERF: possibly attach `texture` and `sprite` as
     // private fields to only allocate once, maybe use a different data flow
     // than sf::Uint8* -> sf::Texture -> sf::Sprite -> window.draw()
-    sf::Texture texture;
     texture.create(this->width, this->height);
     texture.update(this->pixels);
-    sf::Sprite sprite(texture);
-    this->window.draw(sprite);
+    sprite = sf::Sprite(std::move(texture));
+    this->window.draw(std::move(sprite));
     this->window.display();
 }
 
@@ -68,9 +73,17 @@ void rb::Window::setPixel(unsigned int n, rb::Color color) {
     this->pixels[index + 3] = color.a;
 }
 
-bool rb::Window::isOpen() { return this->window.isOpen(); }
+bool rb::Window::isOpen() const { return this->window.isOpen(); }
 
-void rb::Window::fill(rb::Color color) {
+sf::Clock elapsed;
+std::string rb::Window::getFrameRate() const {
+    double elapsed_time = elapsed.getElapsedTime().asSeconds();
+    elapsed.restart();
+
+    return std::to_string((int) (1. / elapsed_time));
+}
+
+void rb::Window::fill(const rb::Color& color) {
     for (int n = 0; n < this->width * this->height; n++) {
         this->setPixel(n, color);
     }
@@ -87,7 +100,9 @@ int absolute(int x) {
 
 // void rb::Window::line(unsigned int x0, unsigned int y0, unsigned int x1,
 // unsigned int y1, rb::Color color) {
-void rb::Window::line(glm::vec2 p0, glm::vec2 p1, rb::Color color) {
+void rb::Window::line(const glm::vec2& p0,
+                      const glm::vec2& p1,
+                      const rb::Color& color) {
     int x0 = p0.x;
     int y0 = p0.y;
     int x1 = p1.x;
@@ -125,10 +140,10 @@ void rb::Window::line(glm::vec2 p0, glm::vec2 p1, rb::Color color) {
     }
 }
 
-void rb::Window::triangle(glm::vec2 p0,
-                          glm::vec2 p1,
-                          glm::vec2 p2,
-                          rb::Color color) {
+void rb::Window::triangle(const glm::vec2& p0,
+                          const glm::vec2& p1,
+                          const glm::vec2& p2,
+                          const rb::Color& color) {
     this->line(p0, p1, color);
     this->line(p1, p2, color);
     this->line(p2, p0, color);

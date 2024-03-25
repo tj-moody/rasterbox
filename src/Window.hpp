@@ -4,6 +4,7 @@
 
 #include <glm/glm.hpp>
 #include <SFML/Graphics.hpp>
+#include <SFML/System/Clock.hpp>
 
 namespace rb {
     class Window {
@@ -12,28 +13,34 @@ namespace rb {
 
             Window(unsigned int width,
                    unsigned int height,
-                   const char* window_title);
+                   std::string&& window_title);
             ~Window();
 
             void draw();
             void handleInput();
             void step();
 
-            bool isOpen();
-            void fill(rb::Color);
+            bool isOpen() const;
+            void fill(const rb::Color&);
 
             void setPixel(unsigned int x, unsigned int y, Color color);
             void setPixel(glm::vec2 p, Color color);
             void setPixel(unsigned int n, Color color);
             void effectPass(void (*func)(rb::Window& window));
-            void line(glm::vec2 p0, glm::vec2 p1, rb::Color color);
-            void triangle(glm::vec2 p0,
-                          glm::vec2 p1,
-                          glm::vec2 p2,
-                          rb::Color color);
+            void line(const glm::vec2& p0,
+                      const glm::vec2& p1,
+                      const rb::Color& color);
+            void triangle(const glm::vec2& p0,
+                          const glm::vec2& p1,
+                          const glm::vec2& p2,
+                          const rb::Color& color);
+            float getTime() const;
 
         private:
-            sf::Uint8* pixels;
             sf::RenderWindow window;
+            std::string window_title;
+            sf::Uint8* pixels;
+
+            std::string getFrameRate() const;
     };
 } // namespace rb
