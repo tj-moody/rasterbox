@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <iosfwd>
+#include <iostream>
 
 #define BACKGROUND_COLOR sf::Color(36, 37, 38, 255)
 
@@ -17,15 +17,13 @@ rb::Window::Window(unsigned int width,
       // each pixel takes 4 Uint8's (RGBA)
       pixels(new sf::Uint8[width * height * 4]) {
     this->depthBuffer.resize(width * height, -INFINITY);
-    for (auto& pixel_depth : this->depthBuffer) { pixel_depth = -INFINITY; }
+    this->clearDepthBuffer();
+    // this->window.setFramerateLimit(120);
 }
 
 sf::Texture texture;
 sf::Sprite sprite;
-void rb::Window::draw() {
-    this->window.setTitle(this->window_title
-                          + " - FPS: " + std::to_string(this->getFrameRate()));
-
+void rb::Window::writePixels() {
     // PERF: possibly attach `texture` and `sprite` as
     // private fields to only allocate once, maybe use a different data flow
     // than sf::Uint8* -> sf::Texture -> sf::Sprite -> window.draw()
@@ -33,14 +31,16 @@ void rb::Window::draw() {
     texture.update(this->pixels);
     sprite = sf::Sprite(std::move(texture));
     this->window.draw(std::move(sprite));
-    this->window.display();
 }
 
 void rb::Window::step() {
-    this->frame_num++;
     this->handleInput();
-    this->draw();
+    this->window.setTitle(this->window_title
+                          + " - FPS: " + std::to_string(this->getFrameRate()));
+    this->writePixels();
+    this->window.display();
     this->clearDepthBuffer();
+    this->frame_num++;
 }
 
 void rb::Window::handleInput() {
@@ -172,13 +172,13 @@ auto edge_function(const glm::vec3& p1,
 
 
 // t0, t1, t2 all have (x, y) in screen space, but z in world space.
-void rb::Window::drawTriangle(const glm::vec3& v0,
-                              const glm::vec3& v1,
-                              const glm::vec3& v2,
-                              const rb::Color& color) {
+void rb::Window::rasterizeTriangle(const glm::vec3& v0,
+                                   const glm::vec3& v1,
+                                   const glm::vec3& v2,
+                                   const rb::Color& diffuse_light) {
     if (v0.y == v1.y && v0.y == v2.y) { return; }
 
-    const rb::Color edge_color(0, color.r, color.r);
+    const rb::Color edge_color(0, diffuse_light.r, diffuse_light.r);
 
     // cull back-facing triangles
     const float ABC = edge_function(v0, v1, v2);
@@ -189,8 +189,11 @@ void rb::Window::drawTriangle(const glm::vec3& v0,
     const int bounding_box_bottom = std::min(v0.y, std::min(v1.y, v2.y));
     const int bounding_box_top    = std::max(v0.y, std::max(v1.y, v2.y));
 
-    rb::Color _c = color;
-    // _c = rb::Color(color.r * 893574 % 255);
+    float value = diffuse_light.value();
+
+    rb::Color color(130, 40, 83);
+    color.scale(value);
+
     for (int x = bounding_box_left; x <= bounding_box_right; x++) {
         for (int y = bounding_box_bottom; y <= bounding_box_top; y++) {
             const glm::vec3 p(x, y, 0);
@@ -208,18 +211,16 @@ void rb::Window::drawTriangle(const glm::vec3& v0,
 
             const float depth
                 = weight0 * v0.z + weight1 * v1.z + weight2 * v2.z;
-            // depth scaled to 0..=255
 
-            if (this->getDepth(x, y) >= depth) { continue; }
+            const float current_depth = this->getDepth(x, y);
+            if (current_depth >= depth && current_depth != -INFINITY) {
+                continue;
+            }
 
-            this->setPixel(x, y, _c);
-            this->setDepth(x, y, 255 * (1 + depth) / 8);
+            this->setPixel(x, y, color);
+            this->setDepth(x, y, depth);
         }
     }
-
-    // this->line(v0, v1, edge_color);
-    // this->line(v1, v2, edge_color);
-    // this->line(v2, v0, edge_color);
 }
 
 // Currently leaves z in world space
@@ -228,10 +229,10 @@ auto model_to_screen(const rb::Window& window, const glm::vec3& model_pos)
     float x = window.width * (model_pos.x + 1) / 2;
     float y = window.height * (1 - (model_pos.y + 1) / 2);
 
-    x /= 4;
-    y /= 4;
-    x += 300;
-    y += 300;
+    // x /= 4;
+    // y /= 4;
+    // x += 300;
+    // y += 300;
 
     return glm::vec3(x, y, -model_pos.z);
 }
@@ -258,7 +259,7 @@ void rb::Window::renderMesh(const rb::Mesh& mesh) {
         glm::vec3 p2 = model_to_screen(*this, std::move(pos2));
         glm::vec3 p3 = model_to_screen(*this, std::move(pos3));
 
-        this->drawTriangle(p1, p2, p3, rb::Color(light));
+        this->rasterizeTriangle(p1, p2, p3, rb::Color(light));
     };
 }
 
@@ -266,8 +267,10 @@ void rb::Window::clearDepthBuffer() {
     for (auto& pixel_depth : this->depthBuffer) { pixel_depth = -INFINITY; }
 };
 
-void rb::Window::drawDepthBuffer() {
+
+void rb::Window::writeDepthBuffer() {
     for (int n = 0; n < this->width * this->height; n++) {
-        this->setPixel(n, rb::Color(this->depthBuffer[n]));
+        const float depth = this->depthBuffer[n];
+        this->setPixel(n, rb::Color(50 * (depth + 2)));
     }
 }

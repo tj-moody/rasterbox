@@ -14,23 +14,20 @@ constexpr unsigned int WIDTH  = 800;
 int main() {
     rb::Window window(WIDTH, HEIGHT, "Rasterbox");
 
-    auto optional_mesh = rb::Assets::load_obj("obj/teapot.obj");
+    auto optional_mesh = rb::Assets::load_obj("obj/head.obj");
     if (!optional_mesh.has_value()) { return 1; }
     rb::Mesh mesh(std::move(optional_mesh.value()));
 
-    while (window.isOpen()) {
-        // window.effectPass(&rb::effects::colorDemo);
+    const glm::vec3 rotation_axis(0.3, 2, -0.1);
 
+    while (window.isOpen()) {
         window.fill(0);
 
         window.renderMesh(mesh);
-        // window.drawDepthBuffer();
+        mesh.rotate(0.01f, rotation_axis);
 
         window.step();
-
-        if (window.frame_num % 3) { mesh.rotate(0.001f, glm::vec3(0, 1, 1)); }
     }
-
 
     return 0;
 }

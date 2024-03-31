@@ -17,7 +17,7 @@ namespace rb {
                    unsigned int height,
                    std::string&& window_title);
 
-            void draw();
+            void writePixels();
             void handleInput();
             void step();
 
@@ -32,18 +32,19 @@ namespace rb {
             void setPixel(unsigned int x, unsigned int y, const Color& color);
             void setPixel(glm::vec2 p, const Color& color);
             void setPixel(unsigned int n, const Color& color);
+
             void effectPass(void (*func)(rb::Window& window));
             void drawLine(const glm::vec2& p0,
-                      const glm::vec2& p1,
-                      const rb::Color& color);
-            void drawTriangle(const glm::vec3& t0,
-                          const glm::vec3& t1,
-                          const glm::vec3& t2,
+                          const glm::vec2& p1,
                           const rb::Color& color);
+            void rasterizeTriangle(const glm::vec3& t0,
+                                   const glm::vec3& t1,
+                                   const glm::vec3& t2,
+                                   const rb::Color& color);
             auto getTime() const -> float;
             void renderMesh(const rb::Mesh& mesh);
 
-            void drawDepthBuffer();
+            void writeDepthBuffer();
 
             std::vector<float> depthBuffer;
 
