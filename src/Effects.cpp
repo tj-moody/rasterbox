@@ -1,8 +1,5 @@
 #include "Effects.hpp"
 
-#include "Color.hpp"
-// #include "Main.cpp"
-
 void rb::effects::colorDemo(rb::Window& window) {
     for (int x = 0; x < window.width; x++) {
         for (int y = 0; y < window.height; y++) {
