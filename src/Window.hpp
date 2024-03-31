@@ -21,26 +21,26 @@ namespace rb {
             void handleInput();
             void step();
 
-            bool isOpen() const;
+            auto isOpen() const -> bool;
             void fill(const rb::Color&);
 
             void setDepth(unsigned int n, float depth);
             void setDepth(unsigned int x, unsigned int y, float depth);
 
-            float getDepth(unsigned int x, unsigned int y);
+            auto getDepth(unsigned int x, unsigned int y) -> float;
 
             void setPixel(unsigned int x, unsigned int y, const Color& color);
             void setPixel(glm::vec2 p, const Color& color);
             void setPixel(unsigned int n, const Color& color);
             void effectPass(void (*func)(rb::Window& window));
-            void line(const glm::vec2& p0,
+            void drawLine(const glm::vec2& p0,
                       const glm::vec2& p1,
                       const rb::Color& color);
-            void triangle(const glm::vec3& t0,
+            void drawTriangle(const glm::vec3& t0,
                           const glm::vec3& t1,
                           const glm::vec3& t2,
                           const rb::Color& color);
-            float getTime() const;
+            auto getTime() const -> float;
             void renderMesh(const rb::Mesh& mesh);
 
             void drawDepthBuffer();
@@ -53,6 +53,6 @@ namespace rb {
             sf::Uint8* pixels;
 
             void clearDepthBuffer();
-            std::string getFrameRate() const;
+            auto getFrameRate() const -> int;
     };
 } // namespace rb

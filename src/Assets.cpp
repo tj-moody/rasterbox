@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-std::optional<rb::Mesh> rb::Assets::load_obj(const char* filename) {
+auto rb::Assets::load_obj(const char* filename) -> std::optional<rb::Mesh> {
     std::ifstream in;
     in.open(filename, std::ifstream::in);
     if (in.fail()) {
@@ -31,13 +31,11 @@ std::optional<rb::Mesh> rb::Assets::load_obj(const char* filename) {
 
             vertices.emplace_back(v);
         } else if (!line.compare(0, 2, "f ")) {
-            sscanf(line.c_str(),
-                   "f %i %i %i",
-                   &x, &y, &z);
-                   // "f %i/%i/%i %i/%i/%i %i/%i/%i",
-                   // &x, &_, &_,
-                   // &y, &_, &_,
-                   // &z, &_, &_);
+            sscanf(line.c_str(), "f %i %i %i", &x, &y, &z);
+            // "f %i/%i/%i %i/%i/%i %i/%i/%i",
+            // &x, &_, &_,
+            // &y, &_, &_,
+            // &z, &_, &_);
 
             indices.push_back(std::move(x));
             indices.push_back(std::move(y));

@@ -24,7 +24,7 @@ sf::Texture texture;
 sf::Sprite sprite;
 void rb::Window::draw() {
     this->window.setTitle(this->window_title
-                          + " - FPS: " + this->getFrameRate());
+                          + " - FPS: " + std::to_string(this->getFrameRate()));
 
     // PERF: possibly attach `texture` and `sprite` as
     // private fields to only allocate once, maybe use a different data flow
@@ -70,7 +70,7 @@ void rb::Window::setDepth(unsigned int x, unsigned int y, float depth) {
     this->depthBuffer[this->width * y + x] = std::move(depth);
 }
 
-float rb::Window::getDepth(unsigned int x, unsigned int y) {
+auto rb::Window::getDepth(unsigned int x, unsigned int y) -> float {
     if (x >= this->width || x < 0 || y >= this->height || y < 0) {
         return -INFINITY;
     }
@@ -102,11 +102,11 @@ void rb::Window::setPixel(unsigned int n, const rb::Color& color) {
 bool rb::Window::isOpen() const { return this->window.isOpen(); }
 
 sf::Clock elapsed;
-std::string rb::Window::getFrameRate() const {
+auto rb::Window::getFrameRate() const -> int {
     double elapsed_time = elapsed.getElapsedTime().asSeconds();
     elapsed.restart();
 
-    return std::to_string((int) (1. / elapsed_time));
+    return (int) (1. / elapsed_time);
 }
 
 void rb::Window::fill(const rb::Color& color) {
@@ -119,16 +119,14 @@ void rb::Window::effectPass(void (*effect)(rb::Window& window)) {
     effect(*this);
 }
 
-int absolute(int x) {
+auto absolute(int x) -> int {
     if (x < 0) { return -x; }
     return x;
 }
 
-// void rb::Window::line(unsigned int x0, unsigned int y0, unsigned int x1,
-// unsigned int y1, rb::Color color) {
-void rb::Window::line(const glm::vec2& p0,
-                      const glm::vec2& p1,
-                      const rb::Color& color) {
+void rb::Window::drawLine(const glm::vec2& p0,
+                          const glm::vec2& p1,
+                          const rb::Color& color) {
     int x0 = p0.x;
     int y0 = p0.y;
     int x1 = p1.x;
@@ -166,32 +164,18 @@ void rb::Window::line(const glm::vec2& p0,
     }
 }
 
-glm::vec3 barycentric(const glm::vec2& p1,
-                      const glm::vec2& p2,
-                      const glm::vec2& p3,
-                      const glm::vec2& P) {
-    glm::vec3 u = glm::cross(glm::vec3(p3.x - p1.x, p2.x - p1.x, p1.x - P.x),
-                             glm::vec3(p3.y - p1.y, p2.y - p1.y, p1.y - P.y));
-    /* `pts` and `P` has integer value as coordinates
-       so `abs(u[2])` < 1 means `u[2]` is 0, that means
-       triangle is degenerate, in this case return something with negative
-       coordinates */
-    if (std::abs(u.z) < 1) { return glm::vec3(-1, 1, 1); }
-    return glm::vec3(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
-}
-
-const float edge_function(const glm::vec3& p1,
-                          const glm::vec3& p2,
-                          const glm::vec3& p3) {
+auto edge_function(const glm::vec3& p1,
+                   const glm::vec3& p2,
+                   const glm::vec3& p3) -> float {
     return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
 }
 
 
 // t0, t1, t2 all have (x, y) in screen space, but z in world space.
-void rb::Window::triangle(const glm::vec3& v0,
-                          const glm::vec3& v1,
-                          const glm::vec3& v2,
-                          const rb::Color& color) {
+void rb::Window::drawTriangle(const glm::vec3& v0,
+                              const glm::vec3& v1,
+                              const glm::vec3& v2,
+                              const rb::Color& color) {
     if (v0.y == v1.y && v0.y == v2.y) { return; }
 
     const rb::Color edge_color(0, color.r, color.r);
@@ -238,8 +222,9 @@ void rb::Window::triangle(const glm::vec3& v0,
     // this->line(v2, v0, edge_color);
 }
 
-glm::vec3 model_to_screen(const rb::Window& window,
-                          const glm::vec3& model_pos) {
+// Currently leaves z in world space
+auto model_to_screen(const rb::Window& window, const glm::vec3& model_pos)
+    -> glm::vec3 {
     float x = window.width * (model_pos.x + 1) / 2;
     float y = window.height * (1 - (model_pos.y + 1) / 2);
 
@@ -273,7 +258,7 @@ void rb::Window::renderMesh(const rb::Mesh& mesh) {
         glm::vec3 p2 = model_to_screen(*this, std::move(pos2));
         glm::vec3 p3 = model_to_screen(*this, std::move(pos3));
 
-        this->triangle(p1, p2, p3, rb::Color(light));
+        this->drawTriangle(p1, p2, p3, rb::Color(light));
     };
 }
 

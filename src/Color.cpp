@@ -9,7 +9,7 @@ Color::Color(sf::Uint8 v, sf::Uint8 a): r(v), g(v), b(v), a(a) {}
 Color::Color(sf::Uint8 v): r(v), g(v), b(v), a(255) {}
 Color::Color(int v): r(v), g(v), b(v), a(255) {}
 Color::Color(): r(0), g(0), b(0), a(255) {}
-Color::Color(float v) : r(v), g(v), b(v), a(255) {
+Color::Color(float v): r(v), g(v), b(v), a(255) {
     if (v < 0) {
         this->r = 255;
         this->b = 255;

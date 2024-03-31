@@ -4,6 +4,6 @@
 
 namespace rb {
     namespace Assets {
-        std::optional<rb::Mesh> load_obj(const char* filename);
+        auto load_obj(const char* filename) -> std::optional<rb::Mesh>;
     }
 }
