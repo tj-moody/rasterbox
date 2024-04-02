@@ -2,6 +2,7 @@
 
 #include "Color.hpp"
 #include "Mesh.hpp"
+#include "Texture.hpp"
 
 #include <glm/glm.hpp>
 #include <SFML/Graphics.hpp>
@@ -17,43 +18,48 @@ namespace rb {
                    unsigned int height,
                    std::string&& window_title);
 
-            void writePixels();
-            void handleInput();
+            void write_pixels();
+            void handle_input();
             void step();
 
-            auto isOpen() const -> bool;
+            auto is_open() const -> bool;
             void fill(const rb::Color&);
 
-            void setDepth(unsigned int n, float depth);
-            void setDepth(unsigned int x, unsigned int y, float depth);
+            void set_depth(unsigned int n, float depth);
+            void set_depth(unsigned int x, unsigned int y, float depth);
 
-            auto getDepth(unsigned int x, unsigned int y) -> float;
+            auto get_depth(unsigned int x, unsigned int y) -> float;
 
-            void setPixel(unsigned int x, unsigned int y, const Color& color);
-            void setPixel(glm::vec2 p, const Color& color);
-            void setPixel(unsigned int n, const Color& color);
+            void set_pixel(unsigned int x, unsigned int y, const Color& color);
+            void set_pixel(glm::vec2 p, const Color& color);
+            void set_pixel(unsigned int n, const Color& color);
 
-            void effectPass(void (*func)(rb::Window& window));
-            void drawLine(const glm::vec2& p0,
+            void effect_pass(void (*func)(rb::Window& window));
+            void draw_line(const glm::vec2& p0,
                           const glm::vec2& p1,
                           const rb::Color& color);
-            void rasterizeTriangle(const glm::vec3& t0,
+            void rasterize_triangle(const glm::vec3& t0,
                                    const glm::vec3& t1,
                                    const glm::vec3& t2,
-                                   const rb::Color& color);
-            auto getTime() const -> float;
-            void renderMesh(const rb::Mesh& mesh);
+                                   const glm::vec2& uv0,
+                                   const glm::vec2& uv1,
+                                   const glm::vec2& uv2,
+                                   float color,
+                                   const rb::Texture& uv_texture);
+            auto get_time() const -> float;
+            void render_mesh(const rb::Mesh& mesh);
 
-            void writeDepthBuffer();
+            void write_depth_buffer();
+            void set_limit_framerate(unsigned int);
 
-            std::vector<float> depthBuffer;
+            std::vector<float> depth_buffer;
 
         private:
             sf::RenderWindow window;
             std::string window_title;
             sf::Uint8* pixels;
 
-            void clearDepthBuffer();
-            auto getFrameRate() const -> int;
+            void clear_depth_buffer();
+            auto get_framerate() const -> int;
     };
 } // namespace rb

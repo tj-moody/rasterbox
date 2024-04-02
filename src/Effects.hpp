@@ -4,7 +4,7 @@
 
 namespace rb {
     namespace effects {
-        void colorDemo(rb::Window& window);
+        void color_demo(rb::Window& window);
         void stars(rb::Window& window);
     }
 }

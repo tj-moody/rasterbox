@@ -1,10 +1,5 @@
 #include "Window.hpp"
 
-#include <algorithm>
-#include <cmath>
-#include <cstdlib>
-#include <iostream>
-
 #define BACKGROUND_COLOR sf::Color(36, 37, 38, 255)
 
 rb::Window::Window(unsigned int width,
@@ -16,14 +11,14 @@ rb::Window::Window(unsigned int width,
       window_title(window_title),
       // each pixel takes 4 Uint8's (RGBA)
       pixels(new sf::Uint8[width * height * 4]) {
-    this->depthBuffer.resize(width * height, -INFINITY);
-    this->clearDepthBuffer();
+    this->depth_buffer.resize(width * height, -INFINITY);
+    this->clear_depth_buffer();
     // this->window.setFramerateLimit(120);
 }
 
 sf::Texture texture;
 sf::Sprite sprite;
-void rb::Window::writePixels() {
+void rb::Window::write_pixels() {
     // PERF: possibly attach `texture` and `sprite` as
     // private fields to only allocate once, maybe use a different data flow
     // than sf::Uint8* -> sf::Texture -> sf::Sprite -> window.draw()
@@ -34,23 +29,27 @@ void rb::Window::writePixels() {
 }
 
 void rb::Window::step() {
-    this->handleInput();
+    this->handle_input();
     this->window.setTitle(this->window_title
-                          + " - FPS: " + std::to_string(this->getFrameRate()));
-    this->writePixels();
+                          + " - FPS: " + std::to_string(this->get_framerate()));
+    this->write_pixels();
     this->window.display();
-    this->clearDepthBuffer();
+    this->clear_depth_buffer();
     this->frame_num++;
 }
 
-void rb::Window::handleInput() {
+void rb::Window::set_limit_framerate(unsigned int limit) {
+    this->window.setFramerateLimit(limit);
+}
+
+void rb::Window::handle_input() {
     sf::Event event;
     while (this->window.pollEvent(event)) {
         if (event.type == sf::Event::Closed) { this->window.close(); }
     }
 }
 
-void rb::Window::setPixel(unsigned int x,
+void rb::Window::set_pixel(unsigned int x,
                           unsigned int y,
                           const rb::Color& color) {
     if (x >= this->width || x < 0 || y >= this->height || y < 0) { return; }
@@ -62,22 +61,22 @@ void rb::Window::setPixel(unsigned int x,
     this->pixels[index + 3] = color.a;
 }
 
-void rb::Window::setDepth(unsigned int n, float depth) {
-    this->depthBuffer[n] = std::move(depth);
+void rb::Window::set_depth(unsigned int n, float depth) {
+    this->depth_buffer[n] = std::move(depth);
 }
-void rb::Window::setDepth(unsigned int x, unsigned int y, float depth) {
+void rb::Window::set_depth(unsigned int x, unsigned int y, float depth) {
     if (x >= this->width || x < 0 || y >= this->height || y < 0) { return; }
-    this->depthBuffer[this->width * y + x] = std::move(depth);
+    this->depth_buffer[this->width * y + x] = std::move(depth);
 }
 
-auto rb::Window::getDepth(unsigned int x, unsigned int y) -> float {
+auto rb::Window::get_depth(unsigned int x, unsigned int y) -> float {
     if (x >= this->width || x < 0 || y >= this->height || y < 0) {
         return -INFINITY;
     }
-    return this->depthBuffer[this->width * y + x];
+    return this->depth_buffer[this->width * y + x];
 }
 
-void rb::Window::setPixel(glm::vec2 p, const rb::Color& color) {
+void rb::Window::set_pixel(glm::vec2 p, const rb::Color& color) {
     if (p.x >= this->width || p.x < 0 || p.y >= this->height || p.y < 0) {
         return;
     }
@@ -89,7 +88,7 @@ void rb::Window::setPixel(glm::vec2 p, const rb::Color& color) {
     this->pixels[index + 3] = color.a;
 }
 
-void rb::Window::setPixel(unsigned int n, const rb::Color& color) {
+void rb::Window::set_pixel(unsigned int n, const rb::Color& color) {
     if (n < 0 || n > this->width * this->height) { return; }
     unsigned int index = n * 4;
 
@@ -99,10 +98,10 @@ void rb::Window::setPixel(unsigned int n, const rb::Color& color) {
     this->pixels[index + 3] = color.a;
 }
 
-bool rb::Window::isOpen() const { return this->window.isOpen(); }
+bool rb::Window::is_open() const { return this->window.isOpen(); }
 
 sf::Clock elapsed;
-auto rb::Window::getFrameRate() const -> int {
+auto rb::Window::get_framerate() const -> int {
     double elapsed_time = elapsed.getElapsedTime().asSeconds();
     elapsed.restart();
 
@@ -111,11 +110,11 @@ auto rb::Window::getFrameRate() const -> int {
 
 void rb::Window::fill(const rb::Color& color) {
     for (int n = 0; n < this->width * this->height; n++) {
-        this->setPixel(n, color);
+        this->set_pixel(n, color);
     }
 }
 
-void rb::Window::effectPass(void (*effect)(rb::Window& window)) {
+void rb::Window::effect_pass(void (*effect)(rb::Window& window)) {
     effect(*this);
 }
 
@@ -124,7 +123,7 @@ auto absolute(int x) -> int {
     return x;
 }
 
-void rb::Window::drawLine(const glm::vec2& p0,
+void rb::Window::draw_line(const glm::vec2& p0,
                           const glm::vec2& p1,
                           const rb::Color& color) {
     int x0 = p0.x;
@@ -152,9 +151,9 @@ void rb::Window::drawLine(const glm::vec2& p0,
     int y = y0;
     for (int x = x0; x <= x1; x++) {
         if (steep) {
-            this->setPixel(y, x, color);
+            this->set_pixel(y, x, color);
         } else {
-            this->setPixel(x, y, color);
+            this->set_pixel(x, y, color);
         }
         error2 += derror2;
         if (error2 > dx) {
@@ -170,55 +169,60 @@ auto edge_function(const glm::vec3& p1,
     return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
 }
 
-
 // t0, t1, t2 all have (x, y) in screen space, but z in world space.
-void rb::Window::rasterizeTriangle(const glm::vec3& v0,
+void rb::Window::rasterize_triangle(const glm::vec3& v0,
                                    const glm::vec3& v1,
                                    const glm::vec3& v2,
-                                   const rb::Color& diffuse_light) {
+                                   const glm::vec2& uv0,
+                                   const glm::vec2& uv1,
+                                   const glm::vec2& uv2,
+                                   const float diffuse_light,
+                                   const rb::Texture& uv_texture) {
     if (v0.y == v1.y && v0.y == v2.y) { return; }
 
-    const rb::Color edge_color(0, diffuse_light.r, diffuse_light.r);
-
     // cull back-facing triangles
-    const float ABC = edge_function(v0, v1, v2);
-    if (ABC < 1) { return; }
+    const float val_0_1_2 = edge_function(v0, v1, v2);
+    if (val_0_1_2 < 1) { return; }
 
     const int bounding_box_left   = std::min(v0.x, std::min(v1.x, v2.x));
     const int bounding_box_right  = std::max(v0.x, std::max(v1.x, v2.x));
     const int bounding_box_bottom = std::min(v0.y, std::min(v1.y, v2.y));
     const int bounding_box_top    = std::max(v0.y, std::max(v1.y, v2.y));
 
-    float value = diffuse_light.value();
-
-    rb::Color color(130, 40, 83);
-    color.scale(value);
-
     for (int x = bounding_box_left; x <= bounding_box_right; x++) {
         for (int y = bounding_box_bottom; y <= bounding_box_top; y++) {
             const glm::vec3 p(x, y, 0);
 
-            const float ABP = edge_function(v0, v1, p);
-            const float BCP = edge_function(v1, v2, p);
-            const float CAP = edge_function(v2, v0, p);
+            const float val_0_1 = edge_function(v0, v1, p);
+            const float val_1_2 = edge_function(v1, v2, p);
+            const float val_2_0 = edge_function(v2, v0, p);
 
-            if (ABP < 0 || BCP < 0 || CAP < 0) { continue; }
+            if (val_0_1 < 0 || val_1_2 < 0 || val_2_0 < 0) { continue; }
 
-            const float weight0 = ABP / ABC;
-            const float weight1 = BCP / ABC;
-            // const float weight2 = CAP / ABC;
+            const float weight0 = val_1_2 / val_0_1_2;
+            const float weight1 = val_2_0 / val_0_1_2;
+            // const float weight2 = val_0_1 / ABC;
             const float weight2 = 1 - weight0 - weight1;
 
             const float depth
                 = weight0 * v0.z + weight1 * v1.z + weight2 * v2.z;
 
-            const float current_depth = this->getDepth(x, y);
+
+            const float current_depth = this->get_depth(x, y);
             if (current_depth >= depth && current_depth != -INFINITY) {
                 continue;
             }
 
-            this->setPixel(x, y, color);
-            this->setDepth(x, y, depth);
+            const glm::vec2 uv(
+                weight0 * uv0.x + weight1 * uv1.x + weight2 * uv2.x,
+                weight0 * uv0.y + weight1 * uv1.y + weight2 * uv2.y);
+
+            // TODO: Load this data from TGA file
+            rb::Color color = uv_texture.get(uv);
+            color.scale(diffuse_light);
+
+            this->set_pixel(x, y, color);
+            this->set_depth(x, y, depth);
         }
     }
 }
@@ -237,40 +241,60 @@ auto model_to_screen(const rb::Window& window, const glm::vec3& model_pos)
     return glm::vec3(x, y, -model_pos.z);
 }
 
-void rb::Window::renderMesh(const rb::Mesh& mesh) {
+void rb::Window::render_mesh(const rb::Mesh& mesh) {
     // glm::vec3 light_dir(1, -1, 1);
     glm::vec3 light_dir(0, 0, 1);
     light_dir = glm::normalize(light_dir);
-    for (int i = 0; i < mesh.indices.size() - 3; i += 3) {
-        unsigned int i1 = mesh.indices[i];
-        unsigned int i2 = mesh.indices[i + 1];
-        unsigned int i3 = mesh.indices[i + 2];
+    for (int i = 0; i < mesh.vertex_indices.size() - 3; i += 3) {
+        const unsigned int vertex_index0 = mesh.vertex_indices[i];
+        const unsigned int vertex_index1 = mesh.vertex_indices[i + 1];
+        const unsigned int vertex_index2 = mesh.vertex_indices[i + 2];
 
-        glm::vec3 pos1 = mesh.vertices[i1].position;
-        glm::vec3 pos2 = mesh.vertices[i2].position;
-        glm::vec3 pos3 = mesh.vertices[i3].position;
+        const glm::vec3 world_pos0 = mesh.vertices[vertex_index0].position;
+        const glm::vec3 world_pos1 = mesh.vertices[vertex_index1].position;
+        const glm::vec3 world_pos2 = mesh.vertices[vertex_index2].position;
 
 
-        glm::vec3 normal = glm::normalize(glm::cross(pos3 - pos1, pos2 - pos1));
+        // clang-format off
+        const glm::vec3 normal = glm::normalize(
+            glm::cross(world_pos2 - world_pos0,
+                       world_pos1 - world_pos0)
+        );
+        // clang-format on
 
         float light = 255 * std::abs(glm::dot(normal, light_dir));
 
-        glm::vec3 p1 = model_to_screen(*this, std::move(pos1));
-        glm::vec3 p2 = model_to_screen(*this, std::move(pos2));
-        glm::vec3 p3 = model_to_screen(*this, std::move(pos3));
+        glm::vec3 vert0 = model_to_screen(*this, std::move(world_pos0));
+        glm::vec3 vert1 = model_to_screen(*this, std::move(world_pos1));
+        glm::vec3 vert2 = model_to_screen(*this, std::move(world_pos2));
 
-        this->rasterizeTriangle(p1, p2, p3, rb::Color(light));
+        int uv_index0 = mesh.uv_indices[i];
+        int uv_index1 = mesh.uv_indices[i + 1];
+        int uv_index2 = mesh.uv_indices[i + 2];
+
+        glm::vec2 uv_coord0 = mesh.uv_coordinates[uv_index0];
+        glm::vec2 uv_coord1 = mesh.uv_coordinates[uv_index1];
+        glm::vec2 uv_coord2 = mesh.uv_coordinates[uv_index2];
+
+        this->rasterize_triangle(vert0,
+                                vert1,
+                                vert2,
+                                uv_coord0,
+                                uv_coord1,
+                                uv_coord2,
+                                light,
+                                mesh.uv_texture);
     };
 }
 
-void rb::Window::clearDepthBuffer() {
-    for (auto& pixel_depth : this->depthBuffer) { pixel_depth = -INFINITY; }
+void rb::Window::clear_depth_buffer() {
+    for (auto& pixel_depth : this->depth_buffer) { pixel_depth = -INFINITY; }
 };
 
 
-void rb::Window::writeDepthBuffer() {
+void rb::Window::write_depth_buffer() {
     for (int n = 0; n < this->width * this->height; n++) {
-        const float depth = this->depthBuffer[n];
-        this->setPixel(n, rb::Color(50 * (depth + 2)));
+        const float depth = this->depth_buffer[n];
+        this->set_pixel(n, rb::Color(50 * (depth + 2)));
     }
 }
