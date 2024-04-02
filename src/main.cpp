@@ -10,9 +10,9 @@
 constexpr unsigned int WIDTH  = 800;
 constexpr unsigned int HEIGHT = 600;
 
-int main() {
+auto main() -> int {
     rb::Window window(WIDTH, HEIGHT, "Rasterbox");
-    window.set_limit_framerate(60);
+    // window.set_limit_framerate(60);
 
     auto optional_mesh = rb::Mesh::from_obj("obj/head.obj");
     if (!optional_mesh.has_value()) { return 1; }

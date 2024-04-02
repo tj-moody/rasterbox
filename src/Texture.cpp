@@ -12,17 +12,13 @@ rb::Texture::Texture(unsigned int width,
       bits_per_pixel(bits_per_pixel),
       data(std::move(data)) {}
 
-rb::Texture::Texture(const Texture& texture)
-    : width(texture.width),
-      height(texture.height),
-      bits_per_pixel(texture.bits_per_pixel),
-      data(texture.data) {}
+rb::Texture::Texture(const Texture& texture) = default;
 
 auto rb::Texture::get(const glm::vec2& uv_coordinate) const -> rb::Color {
-    unsigned int x               = uv_coordinate.x * this->width;
-    unsigned int y               = uv_coordinate.y * this->height;
-    unsigned int bytes_per_pixel = this->bits_per_pixel / 8;
-    unsigned int i               = bytes_per_pixel * (y * this->width + x);
+    const unsigned int x               = uv_coordinate.x * this->width;
+    const unsigned int y               = uv_coordinate.y * this->height;
+    const unsigned int bytes_per_pixel = this->bits_per_pixel / 8;
+    const unsigned int i               = bytes_per_pixel * (y * this->width + x);
     if (this->has_alpha()) {
         return rb::Color(this->data[i + 0],
                          this->data[i + 1],
@@ -40,8 +36,8 @@ auto rb::Texture::get(const glm::vec2& uv_coordinate) const -> rb::Color {
 }
 
 auto rb::Texture::get(unsigned int x, unsigned int y) const -> rb::Color {
-    unsigned int bytes_per_pixel = this->bits_per_pixel / 8;
-    unsigned int i               = bytes_per_pixel * (y * this->width + x);
+    const unsigned int bytes_per_pixel = this->bits_per_pixel / 8;
+    const unsigned int i               = bytes_per_pixel * (y * this->width + x);
     if (this->bits_per_pixel == 24) {
         // clang-format off
         return rb::Color(
@@ -70,7 +66,7 @@ auto rb::Texture::get_height() const -> unsigned int { return this->height; }
 void rb::Texture::flip_vertically() {
     std::vector<std::uint8_t> copy;
     copy.resize(this->width * this->height * sizeof(std::uint32_t));
-    unsigned int bytes_per_pixel = this->bits_per_pixel / 8;
+    const unsigned int bytes_per_pixel = this->bits_per_pixel / 8;
     for (int y = 0; y < this->height; y++) {
         for (int x = 0; x < this->width; x++) {
             for (int i = 0; i < bytes_per_pixel; i++) {
@@ -87,7 +83,7 @@ void rb::Texture::flip_vertically() {
 void rb::Texture::flip_horizontally() {
     std::vector<std::uint8_t> copy;
     copy.resize(this->width * this->height * sizeof(std::uint32_t));
-    unsigned int bytes_per_pixel = this->bits_per_pixel / 8;
+    const unsigned int bytes_per_pixel = this->bits_per_pixel / 8;
     for (int y = 0; y < this->height; y++) {
         for (int x = 0; x < this->width; x++) {
             for (int i = 0; i < bytes_per_pixel; i++) {
@@ -101,12 +97,12 @@ void rb::Texture::flip_horizontally() {
     this->data = std::move(copy);
 }
 
-typedef union PixelInfo {
+using PPixelInfo = union PixelInfo {
         std::uint32_t Colour;
         struct {
                 std::uint8_t R, G, B, A;
         };
-}* PPixelInfo;
+}*;
 
 // From
 // https://stackoverflow.com/questions/20595340/loading-a-tga-bmp-file-in-c-opengl
@@ -153,7 +149,7 @@ auto rb::Texture::from_tga(const char* file_path) -> rb::Texture {
         unsigned int current_byte = 0;
         std::size_t current_pixel = 0;
         std::uint8_t chunk_header = { 0 };
-        int bytes_per_pixel       = (bits_per_pixel / 8);
+        int bytes_per_pixel       = bits_per_pixel / 8;
         image_data.resize(width * height * sizeof(PixelInfo));
 
         do {

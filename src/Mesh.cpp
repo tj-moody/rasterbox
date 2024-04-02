@@ -12,7 +12,7 @@ rb::Mesh::Mesh(Mesh&& mesh)
       vertex_indices(std::move(mesh.vertex_indices)),
       uv_indices(std::move(mesh.uv_indices)),
       uv_coordinates(std::move(mesh.uv_coordinates)),
-      uv_texture(std::move(mesh.uv_texture)) {}
+      uv_texture(mesh.uv_texture) {}
 
 rb::Mesh::Mesh(std::vector<Vertex>&& vertices,
                std::vector<unsigned int>&& indices,
@@ -37,7 +37,7 @@ rb::Mesh::Mesh(std::vector<Vertex> vertices,
       uv_texture(rb::Texture::from_tga(uv_texture_file_name)) {}
 
 void rb::Mesh::rotate(const float& amount, const glm::vec3& direction) {
-    glm::mat4 rotationMat = glm::rotate(glm::mat4(1), amount, direction);
+    const glm::mat4 rotationMat = glm::rotate(glm::mat4(1), amount, direction);
     for (rb::Vertex& vertex : this->vertices) {
         vertex.position
             = glm::vec3(rotationMat * glm::vec4(vertex.position, 0));
@@ -69,7 +69,7 @@ auto rb::Mesh::from_obj(const char* filename) -> std::optional<rb::Mesh> {
     float _f;
 
     Vertex v;
-    int i0, i1, i2; // Vertex indices
+    unsigned int i0, i1, i2; // Vertex indices
 
     unsigned int uv_i0, uv_i1, uv_i2; // UV indices
 
@@ -99,13 +99,13 @@ auto rb::Mesh::from_obj(const char* filename) -> std::optional<rb::Mesh> {
                    &i2, &uv_i2, &_i);
             // clang-format on
 
-            vertex_indices.push_back(std::move(i0));
-            vertex_indices.push_back(std::move(i1));
-            vertex_indices.push_back(std::move(i2));
+            vertex_indices.push_back(i0);
+            vertex_indices.push_back(i1);
+            vertex_indices.push_back(i2);
 
-            uv_indices.push_back(std::move(uv_i0));
-            uv_indices.push_back(std::move(uv_i1));
-            uv_indices.push_back(std::move(uv_i2));
+            uv_indices.push_back(uv_i0);
+            uv_indices.push_back(uv_i1);
+            uv_indices.push_back(uv_i2);
         } else if (!line.compare(0, 3, "vt ")) {
             sscanf(line.c_str(),
                    "vt %f %f %f",

@@ -31,20 +31,20 @@ namespace rb {
             auto get_depth(unsigned int x, unsigned int y) -> float;
 
             void set_pixel(unsigned int x, unsigned int y, const Color& color);
-            void set_pixel(glm::vec2 p, const Color& color);
+            void set_pixel(glm::uvec2 p, const Color& color);
             void set_pixel(unsigned int n, const Color& color);
 
-            void effect_pass(void (*func)(rb::Window& window));
+            void effect_pass(void (*effect)(rb::Window& window));
             void draw_line(const glm::vec2& p0,
                           const glm::vec2& p1,
                           const rb::Color& color);
-            void rasterize_triangle(const glm::vec3& t0,
-                                   const glm::vec3& t1,
-                                   const glm::vec3& t2,
+            void rasterize_triangle(const glm::vec3& v0,
+                                   const glm::vec3& v1,
+                                   const glm::vec3& v2,
                                    const glm::vec2& uv0,
                                    const glm::vec2& uv1,
                                    const glm::vec2& uv2,
-                                   float color,
+                                   float surface_light,
                                    const rb::Texture& uv_texture);
             auto get_time() const -> float;
             void render_mesh(const rb::Mesh& mesh);
@@ -60,6 +60,6 @@ namespace rb {
             sf::Uint8* pixels;
 
             void clear_depth_buffer();
-            auto get_framerate() const -> int;
+            static auto get_framerate() -> unsigned int;
     };
 } // namespace rb

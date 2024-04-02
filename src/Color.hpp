@@ -16,6 +16,6 @@ namespace rb {
             Color();
 
             auto value() const -> int;
-            void scale(const rb::Color c);
+            void scale(const float);
     };
 } // namespace rb

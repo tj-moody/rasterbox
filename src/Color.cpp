@@ -17,8 +17,8 @@ Color::Color(float v): r(v), g(v), b(v), a(255) {
 }
 
 auto Color::value() const -> int { return (this->r + this->g + this->b) / 3; }
-void Color::scale(const rb::Color c) {
-    this->r *= (float) c.r / 255;
-    this->g *= (float) c.g / 255;
-    this->b *= (float) c.b / 255;
+void Color::scale(const float v) {
+    this->r *= v / 255;
+    this->g *= v / 255;
+    this->b *= v / 255;
 }
