@@ -36,16 +36,19 @@ namespace rb {
 
             void effect_pass(void (*effect)(rb::Window& window));
             void draw_line(const glm::vec2& p0,
-                          const glm::vec2& p1,
-                          const rb::Color& color);
+                           const glm::vec2& p1,
+                           const rb::Color& color);
             void rasterize_triangle(const glm::vec3& v0,
-                                   const glm::vec3& v1,
-                                   const glm::vec3& v2,
-                                   const glm::vec2& uv0,
-                                   const glm::vec2& uv1,
-                                   const glm::vec2& uv2,
-                                   float surface_light,
-                                   const rb::Texture& uv_texture);
+                                    const glm::vec3& v1,
+                                    const glm::vec3& v2,
+                                    const glm::vec2& uv0,
+                                    const glm::vec2& uv1,
+                                    const glm::vec2& uv2,
+                                    const glm::vec3& normal0,
+                                    const glm::vec3& normal1,
+                                    const glm::vec3& normal2,
+                                    const rb::Texture& uv_texture,
+                                    const glm::vec3& light_dir);
             auto get_time() const -> float;
             void render_mesh(const rb::Mesh& mesh);
 

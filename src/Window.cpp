@@ -169,6 +169,8 @@ auto edge_function(const glm::vec3& p1,
     return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
 }
 
+// TODO: Separate into vertex/fragment stages
+
 // t0, t1, t2 all have (x, y) in screen space, but z in world space.
 void rb::Window::rasterize_triangle(const glm::vec3& v0,
                                     const glm::vec3& v1,
@@ -176,8 +178,11 @@ void rb::Window::rasterize_triangle(const glm::vec3& v0,
                                     const glm::vec2& uv0,
                                     const glm::vec2& uv1,
                                     const glm::vec2& uv2,
-                                    const float surface_light,
-                                    const rb::Texture& uv_texture) {
+                                    const glm::vec3& normal0,
+                                    const glm::vec3& normal1,
+                                    const glm::vec3& normal2,
+                                    const rb::Texture& uv_texture,
+                                    const glm::vec3& light_dir) {
     if (v0.y == v1.y && v0.y == v2.y) { return; }
 
     // cull back-facing triangles
@@ -220,6 +225,17 @@ void rb::Window::rasterize_triangle(const glm::vec3& v0,
                 weight0 * uv0.y + weight1 * uv1.y + weight2 * uv2.y);
 
             rb::Color color = uv_texture.get(uv);
+
+            // clang-format off
+            const glm::vec3 normal(
+                weight0 * normal0.x + weight1 * normal1.x + weight2 * normal2.x,
+                weight0 * normal0.y + weight1 * normal1.y + weight2 * normal2.y,
+                weight0 * normal0.z + weight1 * normal1.z + weight2 * normal2.z
+            );
+            // clang-format on
+
+            const float surface_light
+                = 255 * std::abs(glm::dot(light_dir, normal));
             color.scale(surface_light);
 
             this->set_pixel(x, y, color);
@@ -251,31 +267,29 @@ void rb::Window::render_mesh(const rb::Mesh& mesh) {
         const unsigned int vertex_index1 = mesh.vertex_indices[i + 1];
         const unsigned int vertex_index2 = mesh.vertex_indices[i + 2];
 
-        const glm::vec3 world_pos0 = mesh.vertices[vertex_index0].position;
-        const glm::vec3 world_pos1 = mesh.vertices[vertex_index1].position;
-        const glm::vec3 world_pos2 = mesh.vertices[vertex_index2].position;
+        const glm::vec3& world_pos0 = mesh.vertices[vertex_index0];
+        const glm::vec3& world_pos1 = mesh.vertices[vertex_index1];
+        const glm::vec3& world_pos2 = mesh.vertices[vertex_index2];
 
-
-        // clang-format off
-        const glm::vec3 normal = glm::normalize(
-            glm::cross(world_pos2 - world_pos0,
-                       world_pos1 - world_pos0)
-        );
-        // clang-format on
-
-        const float light = 255 * std::abs(glm::dot(normal, light_dir));
-
-        const glm::vec3 vert0 = model_to_screen(*this, world_pos0);
-        const glm::vec3 vert1 = model_to_screen(*this, world_pos1);
-        const glm::vec3 vert2 = model_to_screen(*this, world_pos2);
+        const glm::vec3& vert0 = model_to_screen(*this, world_pos0);
+        const glm::vec3& vert1 = model_to_screen(*this, world_pos1);
+        const glm::vec3& vert2 = model_to_screen(*this, world_pos2);
 
         const unsigned int uv_index0 = mesh.uv_indices[i];
         const unsigned int uv_index1 = mesh.uv_indices[i + 1];
         const unsigned int uv_index2 = mesh.uv_indices[i + 2];
 
-        const glm::vec2 uv_coord0 = mesh.uv_coordinates[uv_index0];
-        const glm::vec2 uv_coord1 = mesh.uv_coordinates[uv_index1];
-        const glm::vec2 uv_coord2 = mesh.uv_coordinates[uv_index2];
+        const glm::vec2& uv_coord0 = mesh.uv_coordinates[uv_index0];
+        const glm::vec2& uv_coord1 = mesh.uv_coordinates[uv_index1];
+        const glm::vec2& uv_coord2 = mesh.uv_coordinates[uv_index2];
+
+        const unsigned int normal_index0 = mesh.normal_indices[i];
+        const unsigned int normal_index1 = mesh.normal_indices[i + 1];
+        const unsigned int normal_index2 = mesh.normal_indices[i + 2];
+
+        const glm::vec3& normal0 = mesh.normals[normal_index0];
+        const glm::vec3& normal1 = mesh.normals[normal_index1];
+        const glm::vec3& normal2 = mesh.normals[normal_index2];
 
         this->rasterize_triangle(vert0,
                                  vert1,
@@ -283,8 +297,11 @@ void rb::Window::render_mesh(const rb::Mesh& mesh) {
                                  uv_coord0,
                                  uv_coord1,
                                  uv_coord2,
-                                 light,
-                                 mesh.uv_texture);
+                                 normal0,
+                                 normal1,
+                                 normal2,
+                                 mesh.uv_texture,
+                                 light_dir);
     };
 }
 
