@@ -22,19 +22,32 @@ rb::Mesh::Mesh(std::vector<glm::vec3>&& vertices,
       vertex_indices(std::move(vertex_indices)),
       normal_indices(std::move(normal_indices)),
       uv_indices(std::move(uv_indices)),
-      uv_texture(rb::Texture::from_tga(uv_texture_file_name)) {}
+      uv_texture(rb::Texture::from_tga(uv_texture_file_name)),
+      model_translation(1.0f),
+      model_rotation(1.0f),
+      model_scale(1.0f) {}
 
 
 void rb::Mesh::rotate(const float& amount, const glm::vec3& direction) {
-    const glm::mat4 rotationMat = glm::rotate(glm::mat4(1), amount, direction);
-    for (glm::vec3& vertex : this->vertices) {
-        vertex = glm::vec3(rotationMat * glm::vec4(vertex, 0));
-    }
+    this->model_rotation = glm::rotate(this->model_rotation, amount, direction);
 }
 
 void rb::Mesh::translate(const glm::vec3& translation) {
-    for (glm::vec3& vertex : this->vertices) { vertex += translation; }
+    this->model_translation
+        = glm::translate(this->model_translation, translation);
 }
+
+void rb::Mesh::scale(const float& scale) {
+    this->model_scale = this->model_scale *= scale;
+}
+
+void rb::Mesh::set_rotation(const float& amount, const glm::vec3& direction) {
+    this->model_rotation = glm::rotate(glm::mat4(1.0f), amount, direction);
+}
+void rb::Mesh::set_translation(const glm::vec3& translation) {
+    this->model_translation = glm::translate(glm::mat4(1.0f), translation);
+}
+void rb::Mesh::set_scale(const float& scale) { this->model_scale = scale; }
 
 auto rb::Mesh::from_obj(const char* filename) -> std::optional<rb::Mesh> {
     std::ifstream in;
@@ -123,5 +136,5 @@ auto rb::Mesh::from_obj(const char* filename) -> std::optional<rb::Mesh> {
                                        std::move(vertex_indices),
                                        std::move(normal_indices),
                                        std::move(uv_indices),
-                                       "obj/african_head_diffuse.tga"));
+                                       "obj/head_texture.tga"));
 }

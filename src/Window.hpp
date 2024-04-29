@@ -38,21 +38,27 @@ namespace rb {
             void draw_line(const glm::vec2& p0,
                            const glm::vec2& p1,
                            const rb::Color& color);
-            void rasterize_triangle(const glm::vec3& v0,
-                                    const glm::vec3& v1,
-                                    const glm::vec3& v2,
-                                    const glm::vec2& uv0,
-                                    const glm::vec2& uv1,
-                                    const glm::vec2& uv2,
-                                    const glm::vec3& normal0,
-                                    const glm::vec3& normal1,
-                                    const glm::vec3& normal2,
-                                    const rb::Texture& uv_texture,
-                                    const glm::vec3& light_dir);
+            void vertex_shader(glm::vec3&& v0,
+                               glm::vec3&& v1,
+                               glm::vec3&& v2,
+                               const glm::vec2& uv0,
+                               const glm::vec2& uv1,
+                               const glm::vec2& uv2,
+                               const glm::vec3& normal0,
+                               const glm::vec3& normal1,
+                               const glm::vec3& normal2,
+                               const rb::Texture& uv_texture,
+                               const glm::vec3& light_dir);
+            void fragment_shader(const unsigned int& x,
+                                 const unsigned int& y,
+                                 const float& depth,
+                                 rb::Color&& surface_color,
+                                 glm::vec3&& normal,
+                                 const glm::vec3& light_dir);
             auto get_time() const -> float;
             void render_mesh(const rb::Mesh& mesh);
 
-            void write_depth_buffer();
+            void draw_depth_buffer();
             void set_limit_framerate(unsigned int);
 
             std::vector<float> depth_buffer;
@@ -63,6 +69,8 @@ namespace rb {
             sf::Uint8* pixels;
 
             void clear_depth_buffer();
-            static auto get_framerate() -> unsigned int;
+            static auto get_frame_time() -> float;
+
+            void set_title();
     };
 } // namespace rb

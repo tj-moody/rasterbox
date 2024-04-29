@@ -22,6 +22,11 @@ namespace rb {
 
             void rotate(const float& amount, const glm::vec3& direction);
             void translate(const glm::vec3& translation);
+            void scale(const float& scale);
+
+            void set_rotation(const float& amount, const glm::vec3& direction);
+            void set_translation(const glm::vec3& translation);
+            void set_scale(const float& scale);
 
             std::vector<glm::vec3> vertices;
             std::vector<glm::vec3> normals;
@@ -30,5 +35,9 @@ namespace rb {
             std::vector<unsigned int> normal_indices;
             std::vector<unsigned int> uv_indices;
             rb::Texture uv_texture;
+
+            glm::mat4 model_translation;
+            glm::mat4 model_rotation;
+            float model_scale;
     };
 } // namespace rb

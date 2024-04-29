@@ -21,12 +21,14 @@ auto main() -> int {
     const glm::vec3 rotation_axis(0.3, 2, -0.1);
 
     mesh.rotate(M_PI, glm::vec3(0, 1, 0));
+    mesh.translate(glm::vec3(0, 0, 1.5f));
 
     while (window.is_open()) {
         window.fill(0);
 
         window.render_mesh(mesh);
-        mesh.rotate(0.01f, rotation_axis);
+        mesh.rotate(0.0005f, rotation_axis);
+        mesh.translate(glm::vec3(0, 0, 0.001f));
 
         window.step();
     }

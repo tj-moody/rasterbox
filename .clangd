@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: [-I/usr/local/include, -I/opt/homebrew/include]
+  Add: [-std=c++20, -I/usr/local/include, -I/opt/homebrew/include]

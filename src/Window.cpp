@@ -1,5 +1,11 @@
 #include "Window.hpp"
 
+#include <format>
+#include <glm/glm.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/rotate_vector.hpp>
+
 #define BACKGROUND_COLOR sf::Color(36, 37, 38, 255)
 
 rb::Window::Window(unsigned int width,
@@ -28,14 +34,25 @@ void rb::Window::write_pixels() {
     this->window.draw(sprite);
 }
 
+
 void rb::Window::step() {
+    this->set_title();
     this->handle_input();
-    this->window.setTitle(this->window_title
-                          + " - FPS: " + std::to_string(this->get_framerate()));
     this->write_pixels();
     this->window.display();
     this->clear_depth_buffer();
     this->frame_num++;
+}
+
+void rb::Window::set_title() {
+    float frame_time       = this->get_frame_time();
+    unsigned int framerate = 1 / frame_time;
+    float frame_time_ms    = 1000 * frame_time;
+
+    this->window.setTitle(std::format("{} - FPS: {}, {:.2f} ms elapsed.",
+                                      this->window_title,
+                                      framerate,
+                                      frame_time_ms));
 }
 
 void rb::Window::set_limit_framerate(unsigned int limit) {
@@ -101,11 +118,11 @@ void rb::Window::set_pixel(unsigned int n, const rb::Color& color) {
 auto rb::Window::is_open() const -> bool { return this->window.isOpen(); }
 
 sf::Clock elapsed;
-auto rb::Window::get_framerate() -> unsigned int {
+auto rb::Window::get_frame_time() -> float {
     const float elapsed_time = elapsed.getElapsedTime().asSeconds();
     elapsed.restart();
 
-    return (1. / elapsed_time);
+    return elapsed_time;
 }
 
 void rb::Window::fill(const rb::Color& color) {
@@ -118,11 +135,6 @@ void rb::Window::effect_pass(void (*effect)(rb::Window& window)) {
     effect(*this);
 }
 
-auto absolute(int x) -> int {
-    if (x < 0) { return -x; }
-    return x;
-}
-
 void rb::Window::draw_line(const glm::vec2& p0,
                            const glm::vec2& p1,
                            const rb::Color& color) {
@@ -132,7 +144,7 @@ void rb::Window::draw_line(const glm::vec2& p0,
     int y1 = p1.y;
 
     bool steep = false;
-    if (absolute(x0 - x1) < absolute(y0 - y1)) {
+    if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
         std::swap(x0, y0);
         std::swap(x1, y1);
         steep = true;
@@ -163,31 +175,72 @@ void rb::Window::draw_line(const glm::vec2& p0,
     }
 }
 
-auto edge_function(const glm::vec3& p1,
-                   const glm::vec3& p2,
-                   const glm::vec3& p3) -> float {
-    return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+auto edge_function(const glm::vec3& p1, const glm::vec3& p2, float x, float y)
+    -> float {
+    return (p2.x - p1.x) * (y - p1.y) - (p2.y - p1.y) * (x - p1.x);
 }
 
 // TODO: Separate into vertex/fragment stages
 
-// t0, t1, t2 all have (x, y) in screen space, but z in world space.
-void rb::Window::rasterize_triangle(const glm::vec3& v0,
-                                    const glm::vec3& v1,
-                                    const glm::vec3& v2,
-                                    const glm::vec2& uv0,
-                                    const glm::vec2& uv1,
-                                    const glm::vec2& uv2,
-                                    const glm::vec3& normal0,
-                                    const glm::vec3& normal1,
-                                    const glm::vec3& normal2,
-                                    const rb::Texture& uv_texture,
-                                    const glm::vec3& light_dir) {
+#define CAMERA_POS 2
+// Currently leaves z in world space
+auto clip_to_screen(const unsigned int& width,
+                    const unsigned int& height,
+                    const glm::vec3& pos) -> glm::vec3 {
+    const float screen_x = width * (pos.x + 1) / 2;
+    const float screen_y = height * (1 - (pos.y + 1) / 2);
+
+    // x /= 4;
+    // y /= 4;
+    // x += 300;
+    // y += 300;
+
+    return glm::vec3(screen_x, screen_y, pos.z);
+}
+
+void rb::Window::fragment_shader(const unsigned int& x,
+                                 const unsigned int& y,
+                                 const float& depth,
+                                 rb::Color&& surface_color,
+                                 glm::vec3&& normal,
+                                 const glm::vec3& light_dir) {
+    const float surface_light = 255 * std::abs(glm::dot(light_dir, normal));
+    surface_color.scale(surface_light);
+
+    this->set_pixel(x, y, surface_color);
+    this->set_depth(x, y, depth);
+}
+
+void rb::Window::vertex_shader(glm::vec3&& v0,
+                               glm::vec3&& v1,
+                               glm::vec3&& v2,
+                               const glm::vec2& uv0,
+                               const glm::vec2& uv1,
+                               const glm::vec2& uv2,
+                               const glm::vec3& normal0,
+                               const glm::vec3& normal1,
+                               const glm::vec3& normal2,
+                               const rb::Texture& uv_texture,
+                               const glm::vec3& light_dir) {
+    // Degenerate triangles
     if (v0.y == v1.y && v0.y == v2.y) { return; }
 
-    // cull back-facing triangles
-    const float val_0_1_2 = edge_function(v0, v1, v2);
-    if (val_0_1_2 < 1) { return; }
+    // Triangles outside of view frustum
+    if ((v0.x < -1.f && v1.x < -1.f && v2.x < -1.f)
+        || (v0.y < -1.f && v1.y < -1.f && v2.y < -1.f)
+        /*|| (v0.z < -1.f && v1.z < -1.f && v2.z < -1.f)*/
+        || (v0.x > +1.f && v1.x > +1.f && v2.x > +1.f)
+        || (v0.y > +1.f && v1.y > +1.f && v2.y > +1.f)
+        /*|| (v0.z > +1.f && v1.z > +1.f && v2.z > +1.f)*/) {
+        return;
+    }
+
+    v0 = clip_to_screen(width, height, v0);
+    v1 = clip_to_screen(width, height, v1);
+    v2 = clip_to_screen(width, height, v2);
+
+    const float area = edge_function(v0, v1, v2.x, v2.y);
+    if (area < 1) { return; }
 
     const unsigned int bounding_box_left = std::min(v0.x, std::min(v1.x, v2.x));
     const unsigned int bounding_box_right
@@ -198,22 +251,20 @@ void rb::Window::rasterize_triangle(const glm::vec3& v0,
 
     for (unsigned int x = bounding_box_left; x <= bounding_box_right; x++) {
         for (unsigned int y = bounding_box_bottom; y <= bounding_box_top; y++) {
-            const glm::vec3 p(x, y, 0);
+            // TODO: Move more of this to frag shader
+            const float v0_area = edge_function(v1, v2, x, y);
+            const float v1_area = edge_function(v2, v0, x, y);
+            const float v2_area = edge_function(v0, v1, x, y);
 
-            const float val_0_1 = edge_function(v0, v1, p);
-            const float val_1_2 = edge_function(v1, v2, p);
-            const float val_2_0 = edge_function(v2, v0, p);
+            if (v2_area < 0 || v0_area < 0 || v1_area < 0) { continue; }
 
-            if (val_0_1 < 0 || val_1_2 < 0 || val_2_0 < 0) { continue; }
-
-            const float weight0 = val_1_2 / val_0_1_2;
-            const float weight1 = val_2_0 / val_0_1_2;
-            // const float weight2 = val_0_1 / ABC;
+            const float weight0 = v0_area / area;
+            const float weight1 = v1_area / area;
+            // const float weight2 = val_0_1 / area;
             const float weight2 = 1 - weight0 - weight1;
 
             const float depth
                 = weight0 * v0.z + weight1 * v1.z + weight2 * v2.z;
-
 
             const float current_depth = this->get_depth(x, y);
             if (current_depth <= depth && current_depth != -INFINITY) {
@@ -227,81 +278,84 @@ void rb::Window::rasterize_triangle(const glm::vec3& v0,
             rb::Color color = uv_texture.get(uv);
 
             // clang-format off
-            const glm::vec3 normal(
+            glm::vec3 normal(
                 weight0 * normal0.x + weight1 * normal1.x + weight2 * normal2.x,
                 weight0 * normal0.y + weight1 * normal1.y + weight2 * normal2.y,
                 weight0 * normal0.z + weight1 * normal1.z + weight2 * normal2.z
             );
             // clang-format on
 
-            const float surface_light
-                = 255 * std::abs(glm::dot(light_dir, normal));
-            color.scale(surface_light);
-
-            this->set_pixel(x, y, color);
-            this->set_depth(x, y, depth);
+            this->fragment_shader(x,
+                                  y,
+                                  depth,
+                                  std::move(color),
+                                  std::move(normal),
+                                  light_dir);
         }
     }
 }
 
-// Currently leaves z in world space
-auto model_to_screen(const rb::Window& window, const glm::vec3& model_pos)
-    -> glm::vec3 {
-    const float x = window.width * (model_pos.x + 1) / 2;
-    const float y = window.height * (1 - (model_pos.y + 1) / 2);
-
-    // x /= 4;
-    // y /= 4;
-    // x += 300;
-    // y += 300;
-
-    return glm::vec3(x, y, model_pos.z);
-}
+// float _projection  = 1 - (model_pos.z / CAMERA_POS);
+// glm::vec3 position = _projection * model_pos;
+constexpr glm::mat4 view_matrix = glm::mat4(1.0f);
+glm::mat4 projection            = glm::perspective(35.f, 1.f, 0.1f, 1000.f);
 
 void rb::Window::render_mesh(const rb::Mesh& mesh) {
     // glm::vec3 light_dir(1, -1, 1);
-    glm::vec3 light_dir(0, 0, 1);
-    light_dir = glm::normalize(light_dir);
+    glm::vec3 light_dir = glm::normalize(glm::vec3(0, 0, 1));
+
+    // clang-format off
+    #pragma omp parallel for
+    // clang-format on
     for (unsigned int i = 0; i < mesh.vertex_indices.size() - 3; i += 3) {
-        const unsigned int vertex_index0 = mesh.vertex_indices[i];
-        const unsigned int vertex_index1 = mesh.vertex_indices[i + 1];
-        const unsigned int vertex_index2 = mesh.vertex_indices[i + 2];
+        const unsigned int v_i0 = mesh.vertex_indices[i];
+        const unsigned int v_i1 = mesh.vertex_indices[i + 1];
+        const unsigned int v_i2 = mesh.vertex_indices[i + 2];
 
-        const glm::vec3& world_pos0 = mesh.vertices[vertex_index0];
-        const glm::vec3& world_pos1 = mesh.vertices[vertex_index1];
-        const glm::vec3& world_pos2 = mesh.vertices[vertex_index2];
+        glm::vec3 v0 = mesh.vertices[v_i0];
+        glm::vec3 v1 = mesh.vertices[v_i1];
+        glm::vec3 v2 = mesh.vertices[v_i2];
 
-        const glm::vec3& vert0 = model_to_screen(*this, world_pos0);
-        const glm::vec3& vert1 = model_to_screen(*this, world_pos1);
-        const glm::vec3& vert2 = model_to_screen(*this, world_pos2);
+        const glm::mat4 model
+            = mesh.model_scale * mesh.model_translation * mesh.model_rotation;
 
-        const unsigned int uv_index0 = mesh.uv_indices[i];
-        const unsigned int uv_index1 = mesh.uv_indices[i + 1];
-        const unsigned int uv_index2 = mesh.uv_indices[i + 2];
+        v0 = view_matrix * model * glm::vec4(v0, 1);
+        v1 = view_matrix * model * glm::vec4(v1, 1);
+        v2 = view_matrix * model * glm::vec4(v2, 1);
 
-        const glm::vec2& uv_coord0 = mesh.uv_coordinates[uv_index0];
-        const glm::vec2& uv_coord1 = mesh.uv_coordinates[uv_index1];
-        const glm::vec2& uv_coord2 = mesh.uv_coordinates[uv_index2];
+        const unsigned int uv_i0 = mesh.uv_indices[i];
+        const unsigned int uv_i1 = mesh.uv_indices[i + 1];
+        const unsigned int uv_i2 = mesh.uv_indices[i + 2];
 
-        const unsigned int normal_index0 = mesh.normal_indices[i];
-        const unsigned int normal_index1 = mesh.normal_indices[i + 1];
-        const unsigned int normal_index2 = mesh.normal_indices[i + 2];
+        const glm::vec2& uv0 = mesh.uv_coordinates[uv_i0];
+        const glm::vec2& uv1 = mesh.uv_coordinates[uv_i1];
+        const glm::vec2& uv2 = mesh.uv_coordinates[uv_i2];
 
-        const glm::vec3& normal0 = mesh.normals[normal_index0];
-        const glm::vec3& normal1 = mesh.normals[normal_index1];
-        const glm::vec3& normal2 = mesh.normals[normal_index2];
+        const unsigned int n_i0 = mesh.normal_indices[i];
+        const unsigned int n_i1 = mesh.normal_indices[i + 1];
+        const unsigned int n_i2 = mesh.normal_indices[i + 2];
 
-        this->rasterize_triangle(vert0,
-                                 vert1,
-                                 vert2,
-                                 uv_coord0,
-                                 uv_coord1,
-                                 uv_coord2,
-                                 normal0,
-                                 normal1,
-                                 normal2,
-                                 mesh.uv_texture,
-                                 light_dir);
+        glm::vec3 normal0
+            = mesh.model_rotation * glm::vec4(mesh.normals[n_i0], 0);
+        glm::vec3 normal1
+            = mesh.model_rotation * glm::vec4(mesh.normals[n_i1], 0);
+        glm::vec3 normal2
+            = mesh.model_rotation * glm::vec4(mesh.normals[n_i2], 0);
+
+
+        this->vertex_shader(std::move(v0),
+                            std::move(v1),
+                            std::move(v2),
+                            uv0,
+                            uv1,
+                            uv2,
+                            std::move(normal0),
+                            std::move(normal1),
+                            std::move(normal2),
+                            mesh.uv_texture,
+                            light_dir
+
+        );
     };
 }
 
@@ -310,9 +364,9 @@ void rb::Window::clear_depth_buffer() {
 };
 
 
-void rb::Window::write_depth_buffer() {
+void rb::Window::draw_depth_buffer() {
     for (unsigned int n = 0; n < this->width * this->height; n++) {
         const float depth = this->depth_buffer[n];
-        this->set_pixel(n, rb::Color(50 * (depth + 2)));
+        this->set_pixel(n, rb::Color(255 * depth / 2));
     }
 }
