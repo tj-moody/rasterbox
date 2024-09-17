@@ -7,5 +7,5 @@ A toy software rasterizer, also for me to learn c++.
 
 # Building
 ```sh
-g++ -std=c++17 -O3 src/Window.cpp src/Color.cpp src/Effects.cpp src/Vertex.cpp src/Mesh.cpp src/Assets.cpp -lsfml-graphics -lsfml-window -lsfml-system -o bin/rasterbox src/main.cpp 
+g++ -std=c++20 -O3 -g -Wall -Wpedantic src/Window.cpp src/Color.cpp src/Effects.cpp src/Mesh.cpp src/Texture.cpp -lsfml-graphics -lsfml-window -lsfml-system -Xclang -fopenmp -lomp -o bin/rasterbox src/main.cpp
 ```
