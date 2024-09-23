@@ -1,4 +1,6 @@
-A toy software rasterizer, also for me to learn c++.
+A toy software rasterizer, also for me to learn C++.
+
+<img width="786" alt="Rendering of sample model" src="https://github.com/user-attachments/assets/9be552c6-34c9-492c-8302-fd5080c1ba9e">
 
 # Dependencies
 - A C++ Compiler with C++17 or later
