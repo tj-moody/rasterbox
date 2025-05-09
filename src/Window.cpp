@@ -19,7 +19,7 @@ rb::Window::Window(unsigned int width,
                    std::string&& window_title)
     : width(width),
       height(height),
-      window(sf::VideoMode({ width, height }), window_title),
+      window(sf::RenderWindow(sf::VideoMode({ width, height }), window_title)),
       window_title(window_title),
       // each pixel takes 4 Uint8's (RGBA)
       pixels(new uint8_t[width * height * 4]),
