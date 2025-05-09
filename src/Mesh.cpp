@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/rotate_vector.hpp>
@@ -38,7 +39,7 @@ void rb::Mesh::translate(const glm::vec3& translation) {
 }
 
 void rb::Mesh::scale(const float& scale) {
-    this->model_scale = this->model_scale *= scale;
+    this->model_scale *= scale;
 }
 
 void rb::Mesh::set_rotation(const float& amount, const glm::vec3& direction) {
@@ -90,7 +91,7 @@ auto rb::Mesh::from_obj(const char* filename) -> std::optional<rb::Mesh> {
             // clang-format off
             sscanf(line.c_str(),
                    // "f %i %i %i", &x, &y, &z);
-                   "f %i/%i/%i %i/%i/%i %i/%i/%i",
+                   "f %u/%u/%u %u/%u/%u %u/%u/%u",
                    &v_i0, &uv_i0, &n_i0,
                    &v_i1, &uv_i1, &n_i1,
                    &v_i2, &uv_i2, &n_i2);

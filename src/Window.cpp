@@ -1,5 +1,6 @@
 #include "Window.hpp"
 
+#include <cstdint>
 #include <format>
 #include <glm/glm.hpp>
 
@@ -8,29 +9,37 @@
 
 #define BACKGROUND_COLOR sf::Color(36, 37, 38, 255)
 
+#define FOV_Y        (glm::radians(90.f))
+#define ASPECT_RATIO 1.f
+#define Z_NEAR       0.1f
+#define Z_FAR        1000.f
+
 rb::Window::Window(unsigned int width,
                    unsigned int height,
                    std::string&& window_title)
     : width(width),
       height(height),
-      window(sf::RenderWindow(sf::VideoMode(width, height), window_title)),
+      window(sf::VideoMode({ width, height }), window_title),
       window_title(window_title),
       // each pixel takes 4 Uint8's (RGBA)
-      pixels(new sf::Uint8[width * height * 4]) {
+      pixels(new uint8_t[width * height * 4]),
+      sprite(texture) {
     this->depth_buffer.resize(width * height, -INFINITY);
     this->clear_depth_buffer();
     // this->window.setFramerateLimit(120);
+    bool succeeded
+        = texture.resize(sf::Vector2u(this->width, this->height), false);
+    if (!succeeded) {
+        // TODO:
+    }
 }
 
-sf::Texture texture;
-sf::Sprite sprite;
 void rb::Window::write_pixels() {
     // PERF: possibly attach `texture` and `sprite` as
     // private fields to only allocate once, maybe use a different data flow
     // than sf::Uint8* -> sf::Texture -> sf::Sprite -> window.draw()
-    texture.create(this->width, this->height);
     texture.update(this->pixels);
-    sprite = sf::Sprite(std::move(texture));
+    sprite = sf::Sprite(texture);
     this->window.draw(sprite);
 }
 
@@ -49,20 +58,27 @@ void rb::Window::set_title() {
     unsigned int framerate = 1 / frame_time;
     float frame_time_ms    = 1000 * frame_time;
 
-    this->window.setTitle(std::format("{} - FPS: {}, {:.2f} ms elapsed.",
-                                      this->window_title,
-                                      framerate,
-                                      frame_time_ms));
+    this->window.setTitle(
+        sf::String(std::format("{} - FPS: {}, {:.2f} ms elapsed.",
+                               this->window_title,
+                               framerate,
+                               frame_time_ms)));
 }
 
 void rb::Window::set_limit_framerate(unsigned int limit) {
     this->window.setFramerateLimit(limit);
 }
 
-sf::Event event;
 void rb::Window::handle_input() {
-    while (this->window.pollEvent(event)) {
-        if (event.type == sf::Event::Closed) { this->window.close(); }
+    while (const std::optional event = window.pollEvent()) {
+        if (event->is<sf::Event::Closed>()) {
+            window.close();
+        } else if (const auto* keyPressed
+                   = event->getIf<sf::Event::KeyPressed>()) {
+            if (keyPressed->scancode == sf::Keyboard::Scancode::Escape) {
+                window.close();
+            }
+        }
     }
 }
 
@@ -175,12 +191,12 @@ void rb::Window::draw_line(const glm::vec2& p0,
     }
 }
 
-auto edge_function(const glm::vec3& p1, const glm::vec3& p2, float x, float y)
-    -> float {
+auto edge_function(const glm::vec3& p1,
+                   const glm::vec3& p2,
+                   float x,
+                   float y) -> float {
     return (p2.x - p1.x) * (y - p1.y) - (p2.y - p1.y) * (x - p1.x);
 }
-
-// TODO: Separate into vertex/fragment stages
 
 #define CAMERA_POS 2
 // Currently leaves z in world space
@@ -227,11 +243,11 @@ void rb::Window::vertex_shader(glm::vec3&& v0,
 
     // Triangles outside of view frustum
     if ((v0.x < -1.f && v1.x < -1.f && v2.x < -1.f)
-        || (v0.y < -1.f && v1.y < -1.f && v2.y < -1.f)
-        /*|| (v0.z < -1.f && v1.z < -1.f && v2.z < -1.f)*/
         || (v0.x > +1.f && v1.x > +1.f && v2.x > +1.f)
-        || (v0.y > +1.f && v1.y > +1.f && v2.y > +1.f)
-        /*|| (v0.z > +1.f && v1.z > +1.f && v2.z > +1.f)*/) {
+        // || (v0.z < -1.f && v1.z < -1.f && v2.z < -1.f)
+        // || (v0.z > +1.f && v1.z > +1.f && v2.z > +1.f)
+        || (v0.y < -1.f && v1.y < -1.f && v2.y < -1.f)
+        || (v0.y > +1.f && v1.y > +1.f && v2.y > +1.f)) {
         return;
     }
 
@@ -242,15 +258,13 @@ void rb::Window::vertex_shader(glm::vec3&& v0,
     const float area = edge_function(v0, v1, v2.x, v2.y);
     if (area < 1) { return; }
 
-    const unsigned int bounding_box_left = std::min(v0.x, std::min(v1.x, v2.x));
-    const unsigned int bounding_box_right
-        = std::max(v0.x, std::max(v1.x, v2.x));
-    const unsigned int bounding_box_bottom
-        = std::min(v0.y, std::min(v1.y, v2.y));
-    const unsigned int bounding_box_top = std::max(v0.y, std::max(v1.y, v2.y));
+    const unsigned int bb_neg_x = std::min(v0.x, std::min(v1.x, v2.x));
+    const unsigned int bb_pos_x = std::max(v0.x, std::max(v1.x, v2.x));
+    const unsigned int bb_neg_y = std::min(v0.y, std::min(v1.y, v2.y));
+    const unsigned int bb_pos_y = std::max(v0.y, std::max(v1.y, v2.y));
 
-    for (unsigned int x = bounding_box_left; x <= bounding_box_right; x++) {
-        for (unsigned int y = bounding_box_bottom; y <= bounding_box_top; y++) {
+    for (unsigned int x = bb_neg_x; x <= bb_pos_x; x++) {
+        for (unsigned int y = bb_neg_y; y <= bb_pos_y; y++) {
             // TODO: Move more of this to frag shader
             const float v0_area = edge_function(v1, v2, x, y);
             const float v1_area = edge_function(v2, v0, x, y);
@@ -267,7 +281,7 @@ void rb::Window::vertex_shader(glm::vec3&& v0,
                 = weight0 * v0.z + weight1 * v1.z + weight2 * v2.z;
 
             const float current_depth = this->get_depth(x, y);
-            if (current_depth <= depth && current_depth != -INFINITY) {
+            if (current_depth > depth && current_depth != -INFINITY) {
                 continue;
             }
 
@@ -295,17 +309,17 @@ void rb::Window::vertex_shader(glm::vec3&& v0,
     }
 }
 
-// float _projection  = 1 - (model_pos.z / CAMERA_POS);
-// glm::vec3 position = _projection * model_pos;
+// TODO: Will represent camera, currently unimplemented
 constexpr glm::mat4 view_matrix = glm::mat4(1.0f);
-glm::mat4 projection            = glm::perspective(35.f, 1.f, 0.1f, 1000.f);
+
+glm::mat4 perspective = glm::perspective(FOV_Y, ASPECT_RATIO, Z_NEAR, Z_FAR);
 
 void rb::Window::render_mesh(const rb::Mesh& mesh) {
     // glm::vec3 light_dir(1, -1, 1);
     glm::vec3 light_dir = glm::normalize(glm::vec3(0, 0, 1));
 
     // clang-format off
-    #pragma omp parallel for
+    // #pragma omp parallel for
     // clang-format on
     for (unsigned int i = 0; i < mesh.vertex_indices.size() - 3; i += 3) {
         const unsigned int v_i0 = mesh.vertex_indices[i];
@@ -319,9 +333,9 @@ void rb::Window::render_mesh(const rb::Mesh& mesh) {
         const glm::mat4 model
             = mesh.model_scale * mesh.model_translation * mesh.model_rotation;
 
-        v0 = view_matrix * model * glm::vec4(v0, 1);
-        v1 = view_matrix * model * glm::vec4(v1, 1);
-        v2 = view_matrix * model * glm::vec4(v2, 1);
+        v0 = perspective * view_matrix * model * glm::vec4(v0, 1);
+        v1 = perspective * view_matrix * model * glm::vec4(v1, 1);
+        v2 = perspective * view_matrix * model * glm::vec4(v2, 1);
 
         const unsigned int uv_i0 = mesh.uv_indices[i];
         const unsigned int uv_i1 = mesh.uv_indices[i + 1];
@@ -356,6 +370,9 @@ void rb::Window::render_mesh(const rb::Mesh& mesh) {
                             light_dir
 
         );
+        // this->draw_depth_buffer();
+        // this->write_pixels();
+        // this->window.display();
     };
 }
 
@@ -367,6 +384,6 @@ void rb::Window::clear_depth_buffer() {
 void rb::Window::draw_depth_buffer() {
     for (unsigned int n = 0; n < this->width * this->height; n++) {
         const float depth = this->depth_buffer[n];
-        this->set_pixel(n, rb::Color(255 * depth / 2));
+        this->set_pixel(n, rb::Color(255 * depth));
     }
 }

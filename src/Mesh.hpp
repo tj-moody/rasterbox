@@ -4,6 +4,7 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <optional>
 
 namespace rb {
     class Mesh {

@@ -1,16 +1,17 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <cstdint>
 
 namespace rb {
     class Color {
         public:
-            sf::Uint8 r, g, b, a;
+            std::uint8_t r, g, b, a;
 
-            Color(sf::Uint8 r, sf::Uint8 g, sf::Uint8 b);
-            Color(sf::Uint8 r, sf::Uint8 g, sf::Uint8 b, sf::Uint8 a);
-            Color(sf::Uint8 v, sf::Uint8 a);
-            Color(sf::Uint8 v);
+            Color(std::uint8_t r, std::uint8_t g, std::uint8_t b);
+            Color(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a);
+            Color(std::uint8_t v, std::uint8_t a);
+            Color(std::uint8_t v);
             Color(float v);
             Color(int v);
             Color();

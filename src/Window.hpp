@@ -4,6 +4,7 @@
 #include "Mesh.hpp"
 #include "Texture.hpp"
 
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <SFML/Graphics.hpp>
 #include <SFML/System/Clock.hpp>
@@ -66,7 +67,9 @@ namespace rb {
         private:
             sf::RenderWindow window;
             std::string window_title;
-            sf::Uint8* pixels;
+            std::uint8_t* pixels;
+            sf::Texture texture;
+            sf::Sprite sprite;
 
             void clear_depth_buffer();
             static auto get_frame_time() -> float;

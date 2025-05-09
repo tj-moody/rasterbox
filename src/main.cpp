@@ -27,9 +27,10 @@ auto main() -> int {
         window.fill(0);
 
         window.render_mesh(mesh);
-        mesh.rotate(0.0005f, rotation_axis);
-        mesh.translate(glm::vec3(0, 0, 0.001f));
+        mesh.rotate(0.005f, rotation_axis);
+        // mesh.translate(glm::vec3(0, 0.001f, -0.001f));
 
+        // window.draw_depth_buffer();
         window.step();
     }
 
